@@ -16,27 +16,20 @@ Repository ini dibuat untuk mendokumentasikan progres pembelajaran saya dalam pe
 
 ## 📂 Daftar Project
 
-### 1. Task CLI (`task-cli/`)
+### 1. Number Guessing Game (`number-guessing-game/`)
 
-Aplikasi command-line untuk manajemen task/todo list yang dibangun dengan Go. Project ini mencakup:
+Game tebak angka interaktif berbasis CLI dengan tiga tingkat kesulitan. Pemain harus menebak angka acak antara 1-100 dengan jumlah percobaan terbatas.
 
-- **Fitur Utama:**
-  - Menambah task baru
-  - Menampilkan daftar task
-  - Mengupdate status task
-  - Menghapus task
-  - Persistent storage menggunakan JSON
+- **Konsep yang Dipelajari:** Random number generation, conditional logic, user input handling, switch statements
+- **[Detail lengkap →](number-guessing-game/README.md)**
 
-- **Konsep yang Dipelajari:**
-  - Command-line flag parsing
-  - File I/O operations
-  - JSON serialization/deserialization
-  - Struct dan methods di Go
-  - Error handling
-  - Unit testing
+### 2. Task CLI (`task-cli/`)
 
-- **Dependencies:**
-  - `github.com/aquasecurity/table` - untuk menampilkan data dalam format tabel
+Aplikasi command-line untuk manajemen task/todo list dengan persistent storage. Fitur lengkap untuk menambah, update, delete, dan menampilkan task dalam format tabel.
+
+- **Konsep yang Dipelajari:** Command-line flags, file I/O, JSON serialization, structs & methods, error handling, unit testing
+- **Dependencies:** `github.com/aquasecurity/table`
+- **[Detail lengkap →](task-cli/README.md)**
 
 ### Setup
 
