@@ -2,6 +2,7 @@ package models
 
 import (
 	"log"
+	"os"
 
 	_ "github.com/lib/pq"
 	"gorm.io/driver/postgres"
@@ -11,13 +12,20 @@ import (
 var DB *gorm.DB
 
 func ConnectDatabase() {
-	dsn := "host=localhost user=postgres password=suryy dbname=todolistdb port=5432 sslmode=disable TimeZone=Asia/Jakarta"
-
+	dsn := os.Getenv("DB")
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
-	db.AutoMigrate(&Todo{})
+
+	// Drop tables jika sudah ada (HATI-HATI: Data akan hilang!)
+	//db.Migrator().DropTable(&Todo{}, &User{})
+
+	// AutoMigrate akan membuat tabel users dan todos dengan kolom yang benar
+	err = db.AutoMigrate(&User{}, &Todo{})
+	if err != nil {
+		log.Fatal("Failed to migrate database:", err)
+	}
 
 	log.Println("Successfully Connected to Database")
 	DB = db

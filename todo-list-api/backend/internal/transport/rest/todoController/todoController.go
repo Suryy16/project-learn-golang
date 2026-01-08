@@ -10,18 +10,39 @@ import (
 )
 
 func GetTodos(c *gin.Context) {
+	userInterface, exists := c.Get("user")
+	if !exists {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "User not found in context"})
+		return
+	}
+
+	user := userInterface.(models.User)
+
 	var todos []models.Todo
 
-	models.DB.Find(&todos)
+	if err := models.DB.Where("user_id = ?", user.ID).Find(&todos).Error; err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Return empty array instead of null
+	if todos == nil {
+		todos = []models.Todo{}
+	}
+
+	models.DB.Where("user_id=?", user.ID).Find(&todos)
 	c.JSON(http.StatusOK, gin.H{"todos": todos})
 }
 
 func GetTodo(c *gin.Context) {
+	userInterface, _ := c.Get("user")
+	user := userInterface.(models.User)
+
 	var todo models.Todo
 
 	id := c.Param("id")
 
-	if err := models.DB.First(&todo, id).Error; err != nil {
+	if err := models.DB.Where("user_id=?", user.ID).First(&todo, id).Error; err != nil {
 		switch err {
 		case gorm.ErrRecordNotFound:
 			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"message": "data tidak ditemukan"})
@@ -37,6 +58,9 @@ func GetTodo(c *gin.Context) {
 }
 
 func CreateTodo(c *gin.Context) {
+	userInterface, _ := c.Get("user")
+	user := userInterface.(models.User)
+
 	var todo models.Todo
 
 	if err := c.ShouldBindJSON(&todo); err != nil {
@@ -44,6 +68,7 @@ func CreateTodo(c *gin.Context) {
 		return
 	}
 
+	todo.UserID = user.ID
 	models.DB.Create(&todo)
 
 	c.JSON(http.StatusCreated, gin.H{"todo": todo})
@@ -51,6 +76,9 @@ func CreateTodo(c *gin.Context) {
 }
 
 func UpdateTodo(c *gin.Context) {
+	userInterface, _ := c.Get("user")
+	user := userInterface.(models.User)
+
 	var todo models.Todo
 	id := c.Param("id")
 
@@ -59,7 +87,7 @@ func UpdateTodo(c *gin.Context) {
 		return
 	}
 
-	if models.DB.Model(&todo).Where("id= ?", id).Updates(&todo).RowsAffected == 0 {
+	if models.DB.Model(&todo).Where("id= ? AND user_id=?", id, user.ID).Updates(&todo).RowsAffected == 0 {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"message": "tidak dapat memperbarui data"})
 		return
 	}
@@ -68,6 +96,28 @@ func UpdateTodo(c *gin.Context) {
 }
 
 func DeleteTodo(c *gin.Context) {
+	userInterface, _ := c.Get("user")
+	user := userInterface.(models.User)
+
+	var todo models.Todo
+
+	id := c.Param("id")
+
+	if err := c.ShouldBindJSON(&todo); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+
+	if models.DB.Where("user_id=?", user.ID).Delete(&todo, id).RowsAffected == 0 {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"message": "data tidak ditemukan"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "data berhasil dihapus"})
+}
+
+func ToggleTodo(c *gin.Context) {
+	userInterface, _ := c.Get("user")
+	user := userInterface.(models.User)
 	var todo models.Todo
 
 	var input struct {
@@ -81,9 +131,18 @@ func DeleteTodo(c *gin.Context) {
 
 	id, _ := input.Id.Int64()
 
-	if models.DB.Delete(&todo, id).RowsAffected == 0 {
-		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"message": "data tidak ditemukan"})
-		return
+	if err := models.DB.Where("id=? AND user_id=?", id, user.ID).First(&todo).Error; err != nil {
+		switch err {
+		case gorm.ErrRecordNotFound:
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"message": "data tidak ditemukan"})
+			return
+		default:
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": "terjadi kesalahan pada server"})
+			return
+		}
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "data berhasil dihapus"})
+
+	todo.Completed = !todo.Completed
+	models.DB.Save(&todo)
+	c.JSON(http.StatusOK, gin.H{"message": "todo completed status changed", "status": todo.Completed})
 }

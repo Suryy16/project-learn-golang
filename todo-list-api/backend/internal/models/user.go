@@ -1,7 +1,10 @@
 package models
 
 type User struct {
-	ID       int    `db:"id" json:"id"`
-	Email    string `db:"email" json:"email"`
-	Password string `db:"password" json:"password"`
+	ID        int    `gorm:"primaryKey;autoIncrement" json:"id"`
+	FirstName string `gorm:"not null" json:"first_name"`
+	LastName  string `gorm:"not null" json:"last_name"`
+	Email     string `gorm:"unique;not null" json:"email"`
+	Password  string `gorm:"not null" json:"password"`
+	Todos     []Todo `gorm:"foreignKey:UserID" json:"todos,omitempty"`
 }

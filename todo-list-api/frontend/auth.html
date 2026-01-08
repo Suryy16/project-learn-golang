@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Authentication - Todo List</title>
+	<link rel="stylesheet" href="https://unicons.iconscout.com/release/v2.1.9/css/unicons.css">
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>
+	<div class="section">
+		<div class="container">
+			<div class="row full-height justify-content-center">
+				<div class="col-12 text-center align-self-center py-5">
+					<div class="section pb-5 pt-5 pt-sm-2 text-center">
+						<h6 class="mb-0 pb-3"><span>Log In </span><span>Sign Up</span></h6>
+			          	<input class="checkbox" type="checkbox" id="reg-log" name="reg-log"/>
+			          	<label for="reg-log"></label>
+						<div class="card-3d-wrap mx-auto">
+							<div class="card-3d-wrapper">
+								<div class="card-front">
+									<div class="center-wrap">
+										<div class="section text-center">
+											<h4 class="mb-4 pb-3">Log In</h4>
+											<form id="loginForm" onsubmit="handleLogin(event)">
+												<div class="form-group">
+													<input type="email" name="email" class="form-style" placeholder="Your Email" id="loginEmail" autocomplete="off" required>
+													<i class="input-icon uil uil-at"></i>
+												</div>	
+												<div class="form-group mt-2">
+													<input type="password" name="password" class="form-style" placeholder="Your Password" id="loginPassword" autocomplete="off" required>
+													<i class="input-icon uil uil-lock-alt"></i>
+												</div>
+												<div id="loginError" class="error-message"></div>
+												<button type="submit" class="btn mt-4">Log In</button>
+											</form>
+				      					</div>
+			      					</div>
+			      				</div>
+								<div class="card-back">
+									<div class="center-wrap">
+										<div class="section text-center">
+											<h4 class="mb-3 pb-3">Sign Up</h4>
+											<form id="registerForm" onsubmit="handleRegister(event)">
+												<div class="form-group">
+													<input type="text" name="firstname" class="form-style" placeholder="Your First Name" id="lastName" autocomplete="off" required>
+													<i class="input-icon uil uil-user"></i>
+												</div>	
+												<div class="form-group mt-2">
+													<input type="text" name="lastname" class="form-style" placeholder="Your Last Name" id="lastName" autocomplete="off" required>
+													<i class="input-icon uil uil-user-circle"></i>
+												</div>
+												<div class="form-group mt-2">
+													<input type="email" name="email" class="form-style" placeholder="Your Email" id="registerEmail" autocomplete="off" required>
+													<i class="input-icon uil uil-at"></i>
+												</div>	
+												<div class="form-group mt-2">
+													<input type="password" name="password" class="form-style" placeholder="Your Password" id="registerPassword" autocomplete="off" required minlength="6">
+													<i class="input-icon uil uil-lock-alt"></i>
+												</div>
+												<div id="registerError" class="error-message"></div>
+												<div id="registerSuccess" class="success-message"></div>
+												<button type="submit" class="btn mt-3">Sign Up</button>
+											</form>
+				      					</div>
+			      					</div>
+			      				</div>
+			      			</div>
+			      		</div>
+			      	</div>
+		      	</div>
+	      	</div>
+	    </div>
+	</div>
+
+	<script>
+        const API_URL = 'http://localhost:8080';
+
+        // Handle Login
+        async function handleLogin(event) {
+            event.preventDefault();
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.textContent = '';
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include', // Penting untuk cookies
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Redirect to main page
+                    window.location.href = 'index.html';
+                } else {
+                    errorDiv.textContent = data.error || 'Login failed. Please check your credentials.';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                errorDiv.textContent = 'Connection error. Please try again.';
+            }
+        }
+
+        // Handle Register
+        async function handleRegister(event) {
+            event.preventDefault();
+            const errorDiv = document.getElementById('registerError');
+            const successDiv = document.getElementById('registerSuccess');
+            errorDiv.textContent = '';
+            successDiv.textContent = '';
+            
+            const firstName = document.querySelector('input[name="firstname"]').value;
+            const lastName = document.querySelector('input[name="lastname"]').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+
+            // Basic validation
+            if (password.length < 6) {
+                errorDiv.textContent = 'Password must be at least 6 characters long.';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/register`, { // Ubah dari /signup ke /register
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ 
+                        first_name: firstName,
+                        last_name: lastName,
+                        email, 
+                        password 
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    successDiv.textContent = 'Registration successful! Please log in.';
+                    document.getElementById('registerForm').reset();
+                    
+                    // Switch to login tab after 2 seconds
+                    setTimeout(() => {
+                        document.getElementById('reg-log').checked = false;
+                    }, 2000);
+                } else {
+                    errorDiv.textContent = data.error || 'Registration failed. Please try again.';
+                }
+            } catch (error) {
+                console.error('Register error:', error);
+                errorDiv.textContent = 'Connection error. Please try again.';
+            }
+        }
+
+        // Check if user is already logged in
+        window.addEventListener('DOMContentLoaded', () => {
+            // Cek dengan cookie, bukan localStorage
+            fetch(`${API_URL}/validate`, {
+                credentials: 'include'
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = 'index.html';
+                }
+            })
+            .catch(() => {
+                // User not logged in
+            });
+        });
+    </script>
+</body>
+</html>

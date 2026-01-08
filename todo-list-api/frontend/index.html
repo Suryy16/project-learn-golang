@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo List - Dashboard</title>
+    <link rel="stylesheet" href="https://unicons.iconscout.com/release/v2.1.9/css/unicons.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="main-header">
+        <div class="header-container">
+            <div class="logo-section">
+                <h2>📝 Todo List</h2>
+            </div>
+            <div class="user-section">
+                <span class="user-name" id="userName">Loading...</span>
+                <div class="user-avatar">
+                    <i class="uil uil-user"></i>
+                </div>
+                <button class="logout-btn" onclick="handleLogout()">
+                    <i class="uil uil-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-todo">
+            <div class="welcome-section">
+                <h1 class="welcome-text">Hi, <span id="userFirstName">there</span>! 👋</h1>
+                <p class="welcome-subtitle">Here are your tasks for today</p>
+            </div>
+
+            <!-- Add Todo Form -->
+            <div class="add-todo-section">
+                <form id="addTodoForm" onsubmit="handleAddTodo(event)">
+                    <div class="form-row">
+                        <div class="form-col">
+                            <input 
+                                type="text" 
+                                id="todoTitle" 
+                                placeholder="Task title..." 
+                                class="todo-input"
+                                required
+                            >
+                        </div>
+                        <div class="form-col">
+                            <input 
+                                type="text" 
+                                id="todoDescription" 
+                                placeholder="Description (optional)..." 
+                                class="todo-input"
+                            >
+                        </div>
+                        <button type="submit" class="add-btn">
+                            <i class="uil uil-plus"></i> Add Task
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="error-message"></div>
+
+            <!-- Todo Stats -->
+            <div class="todo-stats">
+                <div class="stat-item">
+                    <span class="stat-number" id="totalTodos">0</span>
+                    <span class="stat-label">Total Tasks</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="completedTodos">0</span>
+                    <span class="stat-label">Completed</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="pendingTodos">0</span>
+                    <span class="stat-label">Pending</span>
+                </div>
+            </div>
+
+            <!-- Todo List -->
+            <div class="todo-list-section">
+                <div class="section-header">
+                    <h3>Your Tasks</h3>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="pending">Pending</button>
+                        <button class="filter-btn" data-filter="completed">Completed</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="todo-table" id="todoTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Status</th>
+                                <th>Title</th>
+                                <th>Description</th>
+                                <th>Created At</th>
+                                <th>Updated At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="todoList">
+                            <!-- Todos will be loaded here -->
+                            <tr>
+                                <td colspan="7" class="loading-state">
+                                    <i class="uil uil-spinner-alt spinning"></i>
+                                    <p>Loading your tasks...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Task</h3>
+                <span class="close-modal" onclick="closeEditModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editForm" onsubmit="submitEdit(event)">
+                    <div class="form-group-modal">
+                        <label for="editTitle">Title</label>
+                        <input type="text" id="editTitle" class="modal-input" required>
+                    </div>
+                    <div class="form-group-modal">
+                        <label for="editDescription">Description</label>
+                        <textarea id="editDescription" class="modal-input" rows="3"></textarea>
+                    </div>
+                    <input type="hidden" id="editTodoId">
+                    <div class="modal-actions">
+                        <button type="button" class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+                        <button type="submit" class="btn-save">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Delete Task</h3>
+                <span class="close-modal" onclick="closeDeleteModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="delete-message">Are you sure you want to delete this task? This action cannot be undone.</p>
+                <div class="delete-task-info">
+                    <strong id="deleteTaskTitle"></strong>
+                </div>
+                <input type="hidden" id="deleteTodoId">
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+                    <button type="button" class="btn-delete" onclick="confirmDelete()">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8080';
+        let currentFilter = 'all';
+        let allTodos = [];
+
+        // Check authentication on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await checkAuth();
+            await loadTodos();
+            setupFilterButtons();
+        });
+
+        // Check if user is authenticated
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_URL}/validate`, {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    window.location.href = 'auth.html';
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.user) {
+                    document.getElementById('userName').textContent = data.user.last_name || 'User';
+                    document.getElementById('userFirstName').textContent = data.user.first_name || 'there';
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                window.location.href = 'auth.html';
+            }
+        }
+
+        // Load todos from API
+        async function loadTodos() {
+            try {
+                const response = await fetch(`${API_URL}/todos`, {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load todos');
+                }
+
+                const data = await response.json();
+                allTodos = data.todos || [];
+                renderTodos();
+                updateStats();
+            } catch (error) {
+                console.error('Error loading todos:', error);
+                showError('Failed to load tasks. Please try again.');
+            }
+        }
+
+        // Render todos based on current filter
+        function renderTodos() {
+            const todoList = document.getElementById('todoList');
+            let filteredTodos = allTodos;
+
+            if (currentFilter === 'completed') {
+                filteredTodos = allTodos.filter(todo => todo.completed);
+            } else if (currentFilter === 'pending') {
+                filteredTodos = allTodos.filter(todo => !todo.completed);
+            }
+
+            if (filteredTodos.length === 0) {
+                todoList.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <i class="uil uil-clipboard-blank"></i>
+                            <p>No tasks found</p>
+                            <span>Add a new task to get started!</span>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            todoList.innerHTML = filteredTodos.map(todo => `
+                <tr class="${todo.completed ? 'completed-row' : ''}" data-id="${todo.id}">
+                    <td class="td-id">${todo.id}</td>
+                    <td class="td-status">
+                        <div class="todo-checkbox">
+                            <input 
+                                type="checkbox" 
+                                id="todo-${todo.id}" 
+                                ${todo.completed ? 'checked' : ''}
+                                onchange="toggleTodo(${todo.id}, this.checked)"
+                            >
+                            <label for="todo-${todo.id}"></label>
+                        </div>
+                    </td>
+                    <td class="td-title">${escapeHtml(todo.title)}</td>
+                    <td class="td-description">${escapeHtml(todo.description || '-')}</td>
+                    <td class="td-date">${formatDateTime(todo.created_at)}</td>
+                    <td class="td-date">${formatDateTime(todo.updated_at)}</td>
+                    <td class="td-actions">
+                        <button class="edit-btn" onclick="editTodo(${todo.id})" title="Edit">
+                            <i class="uil uil-edit"></i>
+                        </button>
+                        <button class="delete-btn" onclick="deleteTodo(${todo.id})" title="Delete">
+                            <i class="uil uil-trash-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Add new todo
+        async function handleAddTodo(event) {
+            event.preventDefault();
+            const titleInput = document.getElementById('todoTitle');
+            const descriptionInput = document.getElementById('todoDescription');
+            const title = titleInput.value.trim();
+            const description = descriptionInput.value.trim();
+
+            if (!title) return;
+
+            try {
+                const response = await fetch(`${API_URL}/todos`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ 
+                        title, 
+                        description: description || '',
+                        completed: false 
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to add todo');
+                }
+
+                titleInput.value = '';
+                descriptionInput.value = '';
+                await loadTodos();
+            } catch (error) {
+                console.error('Error adding todo:', error);
+                showError('Failed to add task. Please try again.');
+            }
+        }
+
+        // Toggle todo completion
+        async function toggleTodo(id, completed) {
+            try {
+                const response = await fetch(`${API_URL}/todos/toggle`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ 
+                        id: id,
+                        completed: completed 
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update todo');
+                }
+
+                await loadTodos();
+            } catch (error) {
+                console.error('Error updating todo:', error);
+                showError('Failed to update task. Please try again.');
+                await loadTodos(); // Reload to reset state
+            }
+        }
+
+        // Edit todo
+        function editTodo(id) {
+            const todo = allTodos.find(t => t.id === id);
+            if (!todo) return;
+
+            document.getElementById('editTodoId').value = id;
+            document.getElementById('editTitle').value = todo.title;
+            document.getElementById('editDescription').value = todo.description || '';
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        async function submitEdit(event) {
+            event.preventDefault();
+            const id = parseInt(document.getElementById('editTodoId').value);
+            const title = document.getElementById('editTitle').value.trim();
+            const description = document.getElementById('editDescription').value.trim();
+            const todo = allTodos.find(t => t.id === id);
+
+            if (!title) return;
+
+            await updateTodo(id, title, description, todo.completed);
+            closeEditModal();
+        }
+
+        // Update todo
+        async function updateTodo(id, title, description, completed) {
+            try {
+                const response = await fetch(`${API_URL}/todos/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ title, description, completed })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to update todo');
+                }
+
+                await loadTodos();
+            } catch (error) {
+                console.error('Error updating todo:', error);
+                showError(error.message || 'Failed to update task. Please try again.');
+            }
+        }
+
+        // Delete todo
+        function deleteTodo(id) {
+            const todo = allTodos.find(t => t.id === id);
+            if (!todo) return;
+
+            document.getElementById('deleteTodoId').value = id;
+            document.getElementById('deleteTaskTitle').textContent = todo.title;
+            document.getElementById('deleteModal').style.display = 'flex';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+        }
+
+        async function confirmDelete() {
+            const id = parseInt(document.getElementById('deleteTodoId').value);
+
+            try {
+                const response = await fetch(`${API_URL}/todos/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({}) // Backend expects a body even for DELETE
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || error.error || 'Failed to delete todo');
+                }
+
+                closeDeleteModal();
+                await loadTodos();
+            } catch (error) {
+                console.error('Error deleting todo:', error);
+                showError(error.message || 'Failed to delete task. Please try again.');
+                closeDeleteModal();
+            }
+        }
+
+        // Logout
+        async function handleLogout() {
+            try {
+                await fetch(`${API_URL}/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+            window.location.href = 'auth.html';
+        }
+
+        // Setup filter buttons
+        function setupFilterButtons() {
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            filterButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filterButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentFilter = btn.dataset.filter;
+                    renderTodos();
+                });
+            });
+        }
+
+        // Update statistics
+        function updateStats() {
+            const total = allTodos.length;
+            const completed = allTodos.filter(t => t.completed).length;
+            const pending = total - completed;
+
+            document.getElementById('totalTodos').textContent = total;
+            document.getElementById('completedTodos').textContent = completed;
+            document.getElementById('pendingTodos').textContent = pending;
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            setTimeout(() => {
+                errorDiv.textContent = '';
+            }, 5000);
+        }
+
+        // Utility functions
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDateTime(dateString) {
+            const date = new Date(dateString);
+            const options = { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 0) {
+                return 'Today';
+            } else if (diffDays === 1) {
+                return 'Yesterday';
+            } else if (diffDays < 7) {
+                return `${diffDays} days ago`;
+            } else {
+                return date.toLocaleDateString();
+            }
+        }
+    </script>
+</body>
+</html>
